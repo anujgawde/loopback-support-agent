@@ -1,0 +1,18 @@
+Your Company Name (yourcompany.com) is a [brief description of what your company does].
+
+What your product does:
+- [Core feature 1]
+- [Core feature 2]
+- [Core feature 3]
+
+Key details for support context:
+- Integrations: [list integrations your product connects to]
+- Onboarding flow: [describe the typical customer onboarding experience]
+- Compliance: [list certifications — SOC 2, HIPAA, GDPR, etc.]
+- Pricing tiers: [list your plans and key differences]
+- Target customers: [who uses your product — roles, company sizes]
+
+Common support topics:
+- [Topic 1 — e.g., integration setup issues]
+- [Topic 2 — e.g., data accuracy questions]
+- [Topic 3 — e.g., billing and account management]

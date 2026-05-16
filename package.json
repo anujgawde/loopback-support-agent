@@ -1,0 +1,11 @@
+{
+  "name": "loopback-support-agent",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "backend": "npm run start:dev --workspace=backend",
+    "frontend": "npm run dev --workspace=frontend",
+    "seed": "npm run seed --workspace=backend"
+  }
+}
