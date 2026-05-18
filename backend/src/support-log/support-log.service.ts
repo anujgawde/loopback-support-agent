@@ -7,27 +7,43 @@ export interface SupportLogEntry {
   title: string;
   timestamp: string;
   customerMessage: string;
+  customerName: string;
+  customerOrg: string;
   source: 'Slack' | 'Web';
+  slackChannel: string;
+  category: string;
+  severity: string;
+  decision: string;
+  confidence: number | null;
+  toolsUsed: string[];
   agentResponse: string | null;
-  toolsUsed: string;
   kbArticleMatched: string;
-  confidence: number;
+  kbMatch: { id: string; title: string; score: number; frequency: number } | null;
+  bugReport: any | null;
   bugReportFiled: boolean;
   githubIssueUrl: string;
+  githubIssueNumber: number | null;
   status: 'Pending Review' | 'Sent' | 'Resolved' | 'Dismissed';
-  slackChannel: string;
 }
 
 export interface CreateSupportLogInput {
   timestamp: string;
   customerMessage: string;
+  customerName?: string;
+  customerOrg?: string;
   source: 'Slack' | 'Web';
   agentResponse: string | null;
   toolCalls: { tool: string }[];
   kbArticleMatched?: string;
   confidence?: number;
+  category?: string;
+  severity?: string;
+  decision?: string;
+  kbMatch?: { id: string; title: string; score: number; frequency: number } | null;
+  bugReport?: any | null;
   bugReportFiled?: boolean;
   githubIssueUrl?: string;
+  githubIssueNumber?: number | null;
   slackChannelId?: string;
   slackUserId?: string;
   status: string;
@@ -56,6 +72,17 @@ export class SupportLogService {
     const title = input.customerMessage.slice(0, 50);
     const toolsUsed = input.toolCalls.map((t) => t.tool).join(', ');
 
+    const enrichedData = JSON.stringify({
+      customerName: input.customerName || '',
+      customerOrg: input.customerOrg || '',
+      category: input.category || 'Other',
+      severity: input.severity || 'medium',
+      decision: input.decision || '',
+      kbMatch: input.kbMatch || null,
+      bugReport: input.bugReport || null,
+      githubIssueNumber: input.githubIssueNumber || null,
+    });
+
     const response = await this.notion.pages.create({
       parent: { database_id: this.databaseId },
       properties: {
@@ -78,6 +105,9 @@ export class SupportLogService {
         Status: { select: { name: input.status || 'Pending Review' } },
         'Slack Channel': {
           rich_text: [{ text: { content: input.slackChannelId || '' } }],
+        },
+        'Enriched Data': {
+          rich_text: this.splitRichText(enrichedData),
         },
       },
     });
@@ -114,20 +144,44 @@ export class SupportLogService {
 
   private pageToEntry(page: any): SupportLogEntry {
     const props = page.properties;
+    const toolsUsedStr = this.extractRichText(props['Tools Used']);
+    const toolsUsed = toolsUsedStr ? toolsUsedStr.split(', ').filter(Boolean) : [];
+
+    let enriched: any = {};
+    try {
+      const enrichedStr = this.extractRichText(props['Enriched Data']);
+      if (enrichedStr) enriched = JSON.parse(enrichedStr);
+    } catch {}
+
+    const githubIssueUrl = props['GitHub Issue URL']?.url || '';
+    let githubIssueNumber = enriched.githubIssueNumber || null;
+    if (!githubIssueNumber && githubIssueUrl) {
+      const match = githubIssueUrl.match(/\/(\d+)$/);
+      if (match) githubIssueNumber = parseInt(match[1], 10);
+    }
+
     return {
       id: page.id,
       title: props['Title']?.title?.[0]?.text?.content || '',
       timestamp: props['Timestamp']?.date?.start || '',
       customerMessage: this.extractRichText(props['Customer Message']),
+      customerName: enriched.customerName || '',
+      customerOrg: enriched.customerOrg || '',
       source: props['Source']?.select?.name || 'Web',
-      agentResponse: this.extractRichText(props['Agent Response']) || null,
-      toolsUsed: this.extractRichText(props['Tools Used']),
-      kbArticleMatched: this.extractRichText(props['KB Article Matched']),
-      confidence: props['Confidence']?.number || 0,
-      bugReportFiled: props['Bug Report Filed']?.checkbox || false,
-      githubIssueUrl: props['GitHub Issue URL']?.url || '',
-      status: props['Status']?.select?.name || 'Pending Review',
       slackChannel: this.extractRichText(props['Slack Channel']),
+      category: enriched.category || 'Other',
+      severity: enriched.severity || 'medium',
+      decision: enriched.decision || '',
+      confidence: props['Confidence']?.number || null,
+      toolsUsed,
+      agentResponse: this.extractRichText(props['Agent Response']) || null,
+      kbArticleMatched: this.extractRichText(props['KB Article Matched']),
+      kbMatch: enriched.kbMatch || null,
+      bugReport: enriched.bugReport || null,
+      bugReportFiled: props['Bug Report Filed']?.checkbox || false,
+      githubIssueUrl,
+      githubIssueNumber,
+      status: props['Status']?.select?.name || 'Pending Review',
     };
   }
 

@@ -3,3 +3,7 @@ dist/
 .env
 backend/company-context.txt
 build-plan.md
+AGENTS.md
+CLAUDE.md
+
+extras

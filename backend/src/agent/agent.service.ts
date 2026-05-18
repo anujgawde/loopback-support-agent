@@ -20,6 +20,18 @@ export interface AgentResult {
   response: string | null;
   toolCalls: ToolCallLog[];
   logId: string;
+  classification?: {
+    category: string;
+    severity: string;
+    symptomSummary?: string;
+  };
+  decision?: {
+    action: string;
+    confidence: number;
+    reasoning: string;
+  };
+  kbMatches?: { id: string; title: string; score: number; frequency: number }[];
+  bugReport?: any;
 }
 
 @Injectable()
@@ -100,12 +112,68 @@ export class AgentService {
       finalResponse = 'Agent reached maximum iterations without a final response.';
     }
 
-    const kbMatch = toolResults.find((t) => t.tool === 'search_kb');
-    const topConfidence = kbMatch?.result?.[0]?.similarityScore || 0;
-    const topArticleTitle = kbMatch?.result?.[0]?.article?.title || '';
+    const kbSearchResult = toolResults.find((t) => t.tool === 'search_kb');
+    const kbResults = Array.isArray(kbSearchResult?.result) ? kbSearchResult.result : [];
+    const topMatch = kbResults[0];
+    const topConfidence = topMatch?.similarityScore || 0;
+    const topArticleTitle = topMatch?.article?.title || '';
+
+    const kbMatchData = topMatch ? {
+      id: topMatch.article?.id || '',
+      title: topMatch.article?.title || '',
+      score: topMatch.similarityScore || 0,
+      frequency: topMatch.article?.frequency || 0,
+    } : null;
+
+    const kbMatches = kbResults.map((m: any) => ({
+      id: m.article?.id || '',
+      title: m.article?.title || '',
+      score: m.similarityScore || 0,
+      frequency: m.article?.frequency || 0,
+    }));
+
+    const bugReportResult = toolResults.find((t) => t.tool === 'generate_bug_report');
+    const bugReport = bugReportResult?.result || null;
+
     const bugFiled = toolResults.some((t) => t.tool === 'create_github_issue');
-    const githubUrl =
-      toolResults.find((t) => t.tool === 'create_github_issue')?.result?.url || '';
+    const githubResult = toolResults.find((t) => t.tool === 'create_github_issue')?.result;
+    const githubUrl = githubResult?.url || '';
+    const githubIssueNumber = githubResult?.number || null;
+
+    let decision: string;
+    if (bugFiled || bugReport) {
+      decision = 'GENERATE_BUG_REPORT';
+    } else if (topConfidence >= 0.7) {
+      decision = 'RESPOND_FROM_KB';
+    } else if (topConfidence >= 0.55) {
+      decision = 'SUGGEST_KB_MATCH';
+    } else {
+      decision = 'NEW_ISSUE_TRACK';
+    }
+
+    let category = 'Other';
+    let severity = 'medium';
+    if (bugReport) {
+      category = 'Sync';
+      severity = bugReport.severity || 'medium';
+    } else if (topMatch?.article?.category) {
+      category = topMatch.article.category;
+    }
+
+    if (bugReport && bugReport.environment && typeof bugReport.environment === 'object') {
+      const env = bugReport.environment;
+      bugReport.environment = [
+        env.plan && `plan: ${env.plan}`,
+        env.teamSize && `team: ${env.teamSize}`,
+        env.integrations?.length && `integrations: ${env.integrations.join(', ')}`,
+        env.relevantConfig && env.relevantConfig,
+      ].filter(Boolean).join(' · ');
+    }
+
+    if (bugReport && githubIssueNumber) {
+      bugReport.issueNumber = githubIssueNumber;
+      bugReport.githubUrl = githubUrl;
+    }
 
     const logEntry = await this.supportLogService.create({
       timestamp: new Date().toISOString(),
@@ -115,8 +183,14 @@ export class AgentService {
       toolCalls: toolResults,
       kbArticleMatched: topArticleTitle,
       confidence: topConfidence,
+      category,
+      severity,
+      decision,
+      kbMatch: kbMatchData,
+      bugReport,
       bugReportFiled: bugFiled,
       githubIssueUrl: githubUrl,
+      githubIssueNumber,
       slackChannelId: metadata?.channelId,
       slackUserId: metadata?.userId,
       status: 'Pending Review',
@@ -126,6 +200,14 @@ export class AgentService {
       response: finalResponse,
       toolCalls: toolResults,
       logId: logEntry.id,
+      classification: { category, severity },
+      decision: {
+        action: decision,
+        confidence: topConfidence,
+        reasoning: `Based on ${toolResults.length} tool calls`,
+      },
+      kbMatches,
+      bugReport,
     };
   }
 
