@@ -1,5 +1,4 @@
 export default () => ({
-  companyName: process.env.COMPANY_NAME || 'YourCompany',
   port: parseInt(process.env.PORT || '3000', 10),
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3001',
   llm: {
@@ -11,10 +10,15 @@ export default () => ({
   notion: {
     apiKey: process.env.NOTION_API_KEY,
     databaseId: process.env.NOTION_KB_DATABASE_ID,
+    supportLogDatabaseId: process.env.NOTION_SUPPORT_LOG_DATABASE_ID,
   },
   qdrant: {
     url: process.env.QDRANT_URL,
     apiKey: process.env.QDRANT_API_KEY,
-    collection: process.env.QDRANT_COLLECTION || 'support-kb',
+    collection: process.env.QDRANT_COLLECTION || 'weave-kb',
+  },
+  github: {
+    token: process.env.GITHUB_TOKEN,
+    repo: process.env.GITHUB_REPO,
   },
 });
