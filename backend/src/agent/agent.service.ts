@@ -70,10 +70,9 @@ export class AgentService {
       );
 
       if (llmResponse.functionCalls && llmResponse.functionCalls.length > 0) {
-        const modelParts: any[] = llmResponse.functionCalls.map((call) => ({
+        conversationHistory.push({ role: 'model', parts: llmResponse.rawParts || llmResponse.functionCalls.map((call) => ({
           functionCall: { name: call.name, args: call.args },
-        }));
-        conversationHistory.push({ role: 'model', parts: modelParts });
+        })) });
 
         const responseParts: any[] = [];
         for (const call of llmResponse.functionCalls) {
@@ -90,7 +89,9 @@ export class AgentService {
           responseParts.push({
             functionResponse: {
               name: call.name,
-              response: result,
+              response: typeof result === 'object' && !Array.isArray(result)
+                ? result
+                : { data: result },
             },
           });
         }
@@ -135,8 +136,25 @@ export class AgentService {
     const bugReportResult = toolResults.find((t) => t.tool === 'generate_bug_report');
     const bugReport = bugReportResult?.result || null;
 
-    const bugFiled = toolResults.some((t) => t.tool === 'create_github_issue');
-    const githubResult = toolResults.find((t) => t.tool === 'create_github_issue')?.result;
+    let bugFiled = toolResults.some((t) => t.tool === 'create_github_issue');
+    let githubResult = toolResults.find((t) => t.tool === 'create_github_issue')?.result;
+
+    if (bugReport && !bugFiled) {
+      this.logger.log('Bug report generated without GitHub issue — auto-filing');
+      githubResult = await this.githubService.createIssue(
+        bugReport.title || 'Bug Report',
+        bugReport.markdownBody || bugReport.description || '',
+        bugReport.suggestedLabels || ['bug'],
+      );
+      bugFiled = true;
+      toolResults.push({
+        tool: 'create_github_issue',
+        args: { title: bugReport.title },
+        result: githubResult,
+        timestamp: new Date(),
+      });
+    }
+
     const githubUrl = githubResult?.url || '';
     const githubIssueNumber = githubResult?.number || null;
 
@@ -165,7 +183,7 @@ export class AgentService {
       bugReport.environment = [
         env.plan && `plan: ${env.plan}`,
         env.teamSize && `team: ${env.teamSize}`,
-        env.integrations?.length && `integrations: ${env.integrations.join(', ')}`,
+        env.integrations && `integrations: ${Array.isArray(env.integrations) ? env.integrations.join(', ') : env.integrations}`,
         env.relevantConfig && env.relevantConfig,
       ].filter(Boolean).join(' · ');
     }

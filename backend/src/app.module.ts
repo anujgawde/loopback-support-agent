@@ -11,6 +11,11 @@ import { SupportLogModule } from './support-log/support-log.module';
 import { AgentModule } from './agent/agent.module';
 import { SlackBotModule } from './slack/slack.module';
 
+const optionalModules: any[] = [];
+if (process.env.SLACK_BOT_TOKEN) {
+  optionalModules.push(SlackBotModule);
+}
+
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
@@ -22,7 +27,7 @@ import { SlackBotModule } from './slack/slack.module';
     GitHubModule,
     SupportLogModule,
     AgentModule,
-    SlackBotModule,
+    ...optionalModules,
   ],
 })
 export class AppModule {}

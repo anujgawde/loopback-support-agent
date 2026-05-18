@@ -7,6 +7,7 @@ export interface LLMFunctionCall {
 export interface LLMResponse {
   text: string | null;
   functionCalls: LLMFunctionCall[] | null;
+  rawParts?: any[];
 }
 
 export interface LLMProvider {

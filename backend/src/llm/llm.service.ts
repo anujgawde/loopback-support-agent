@@ -14,6 +14,7 @@ export class LLMService implements LLMProvider {
       default:
         this.provider = new GeminiProvider(
           this.configService.get<string>('llm.geminiApiKey') || '',
+          this.configService.get<string>('llm.geminiModel') || 'gemini-2.5-flash',
         );
     }
   }

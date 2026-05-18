@@ -4,6 +4,7 @@ export default () => ({
   llm: {
     provider: process.env.LLM_PROVIDER || 'gemini',
     geminiApiKey: process.env.GEMINI_API_KEY,
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
     anthropicApiKey: process.env.ANTHROPIC_API_KEY,
     openaiApiKey: process.env.OPENAI_API_KEY,
   },

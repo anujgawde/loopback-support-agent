@@ -5,9 +5,11 @@ import { randomUUID } from 'crypto';
 export class GeminiProvider implements LLMProvider {
   readonly name = 'gemini';
   private ai: GoogleGenAI;
+  private model: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, model: string) {
     this.ai = new GoogleGenAI({ apiKey });
+    this.model = model;
   }
 
   async generateWithTools(
@@ -17,7 +19,7 @@ export class GeminiProvider implements LLMProvider {
   ): Promise<LLMResponse> {
     const response = await this.callWithRetry(() =>
       this.ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-05-20',
+        model: this.model,
         contents: conversationHistory,
         config: {
           systemInstruction: systemPrompt,
@@ -48,13 +50,14 @@ export class GeminiProvider implements LLMProvider {
     return {
       text: text || null,
       functionCalls: functionCalls.length > 0 ? functionCalls : null,
+      rawParts: parts,
     };
   }
 
   async generateJSON<T>(systemPrompt: string, userPrompt: string): Promise<T> {
     const response = await this.callWithRetry(() =>
       this.ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-05-20',
+        model: this.model,
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
@@ -68,7 +71,7 @@ export class GeminiProvider implements LLMProvider {
   async generateText(systemPrompt: string, userPrompt: string): Promise<string> {
     const response = await this.callWithRetry(() =>
       this.ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-05-20',
+        model: this.model,
         contents: userPrompt,
         config: {
           systemInstruction: systemPrompt,
