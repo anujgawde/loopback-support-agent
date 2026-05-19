@@ -54,7 +54,7 @@ function BugReportBlock({ bug }: { bug: BugReport }) {
             Auto-generated{bug.issueNumber ? ` · synced to GitHub issue #${bug.issueNumber}` : ''}
           </div>
         </div>
-        <Btn size="sm" variant="ghost" icon={<I.Edit className="w-3.5 h-3.5" />}>Edit</Btn>
+        {/* TODO: wire up Edit button */}
       </div>
       <div className="p-6">
         <div className="space-y-4">
@@ -98,7 +98,7 @@ function BugReportBlock({ bug }: { bug: BugReport }) {
         </div>
         <div className="flex items-center gap-2">
           {bug.githubUrl && (
-            <Btn size="md" variant="ghost" icon={<I.External className="w-3.5 h-3.5" />}>View GitHub Issue</Btn>
+            <Btn size="md" variant="ghost" icon={<I.External className="w-3.5 h-3.5" />} onClick={() => window.open(bug.githubUrl, '_blank')}>View GitHub Issue</Btn>
           )}
           <CopyButton text={md} label="Copy as Markdown" size="md" variant="primary" />
         </div>
@@ -307,9 +307,7 @@ export function IntakePage() {
                   <div className="text-[11px] tracking-wide font-medium text-muted2 uppercase">Draft response</div>
                   <div className="text-[11.5px] text-muted mt-0.5">Generated from agent · ready to send</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Btn size="sm" variant="ghost" icon={<I.Refresh className="w-3.5 h-3.5" />}>Regenerate</Btn>
-                </div>
+                {/* TODO: wire up Regenerate button */}
               </div>
               <div className="p-5">
                 <div className="w-full bg-surface border border-line rounded-md p-4 text-[14px] leading-[1.65] text-ink2 whitespace-pre-wrap">

@@ -21,6 +21,23 @@ export async function getLog(id: string): Promise<SupportLogEntry> {
   return request<SupportLogEntry>(`/logs/${id}`);
 }
 
+export async function updateLogStatus(
+  id: string,
+  status: 'Pending Review' | 'Sent' | 'Resolved' | 'Dismissed',
+): Promise<SupportLogEntry> {
+  return request<SupportLogEntry>(`/logs/${id}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function createKBArticle(article: Record<string, unknown>): Promise<KBArticle> {
+  return request<KBArticle>('/kb/articles', {
+    method: 'POST',
+    body: JSON.stringify(article),
+  });
+}
+
 export async function getKBArticles(): Promise<KBArticle[]> {
   return request<KBArticle[]>('/kb/articles');
 }

@@ -142,6 +142,23 @@ export class SupportLogService {
     return this.pageToEntry(page);
   }
 
+  async updateStatus(
+    id: string,
+    status: 'Pending Review' | 'Sent' | 'Resolved' | 'Dismissed',
+  ): Promise<SupportLogEntry> {
+    const valid = ['Pending Review', 'Sent', 'Resolved', 'Dismissed'];
+    if (!valid.includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+    await this.notion.pages.update({
+      page_id: id,
+      properties: {
+        Status: { select: { name: status } },
+      },
+    });
+    return this.getById(id);
+  }
+
   private pageToEntry(page: any): SupportLogEntry {
     const props = page.properties;
     const toolsUsedStr = this.extractRichText(props['Tools Used']);

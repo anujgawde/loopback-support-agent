@@ -9,7 +9,7 @@ import {
 } from './primitives';
 import Image from 'next/image';
 import * as I from './icons';
-import { getLog } from '@/lib/api';
+import { getLog, updateLogStatus, createKBArticle } from '@/lib/api';
 import type { SupportLogEntry, BugReport } from '@/lib/types';
 
 interface ToolTimelineStepData {
@@ -151,7 +151,31 @@ function KBMatchCard({ match }: { match: { id: string; title: string; score: num
   );
 }
 
-function DraftResponseBlock({ draft, onChange }: { draft: string; onChange: (v: string) => void }) {
+function DraftResponseBlock({ draft, onChange, ticketId, status, onStatusChange }: {
+  draft: string;
+  onChange: (v: string) => void;
+  ticketId: string;
+  status: string;
+  onStatusChange: (s: string) => void;
+}) {
+  const [updating, setUpdating] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  async function handleStatusUpdate(newStatus: 'Sent' | 'Resolved') {
+    setUpdating(newStatus);
+    try {
+      await updateLogStatus(ticketId, newStatus);
+      onStatusChange(newStatus);
+      setFeedback(newStatus === 'Sent' ? 'Marked as sent' : 'Marked as resolved');
+      setTimeout(() => setFeedback(null), 2000);
+    } catch {
+      setFeedback('Failed to update');
+      setTimeout(() => setFeedback(null), 2000);
+    } finally {
+      setUpdating(null);
+    }
+  }
+
   return (
     <Card padded={false}>
       <div className="px-5 py-3.5 flex items-center justify-between border-b border-line">
@@ -171,11 +195,26 @@ function DraftResponseBlock({ draft, onChange }: { draft: string; onChange: (v: 
       </div>
       <div className="px-5 py-3.5 border-t border-line flex items-center justify-between bg-surface/60">
         <div className="text-[11.5px] text-muted">
-          Ready to copy and send
+          {feedback || (status === 'Resolved' ? 'Resolved' : status === 'Sent' ? 'Sent' : 'Ready to send')}
         </div>
         <div className="flex items-center gap-2">
-          <Btn size="md" variant="ghost">Mark Resolved</Btn>
-          <CopyButton text={draft} label="Copy to Clipboard" size="md" variant="primary" />
+          <Btn
+            size="md"
+            variant="ghost"
+            disabled={updating !== null || status === 'Resolved'}
+            onClick={() => handleStatusUpdate('Resolved')}
+          >
+            {status === 'Resolved' ? 'Resolved' : updating === 'Resolved' ? 'Updating...' : 'Mark Resolved'}
+          </Btn>
+          <Btn
+            size="md"
+            variant="ghost"
+            disabled={updating !== null || status === 'Sent' || status === 'Resolved'}
+            onClick={() => handleStatusUpdate('Sent')}
+          >
+            {status === 'Sent' || status === 'Resolved' ? 'Sent' : updating === 'Sent' ? 'Updating...' : 'Mark as Sent'}
+          </Btn>
+          <CopyButton text={draft} label="Copy" size="md" variant="primary" />
         </div>
       </div>
     </Card>
@@ -244,7 +283,7 @@ function BugReportBlock({ bug }: { bug: BugReport }) {
         </div>
         <div className="flex items-center gap-2">
           {bug.githubUrl && (
-            <Btn size="md" variant="ghost" icon={<I.External className="w-3.5 h-3.5" />}>View GitHub Issue</Btn>
+            <Btn size="md" variant="ghost" icon={<I.External className="w-3.5 h-3.5" />} onClick={() => window.open(bug.githubUrl, '_blank')}>View GitHub Issue</Btn>
           )}
           <CopyButton text={md} label="Copy as Markdown" size="md" variant="primary" />
         </div>
@@ -337,6 +376,8 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
   const [ticket, setTicket] = useState<SupportLogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [draft, setDraft] = useState('');
+  const [kbCreating, setKbCreating] = useState(false);
+  const [kbCreated, setKbCreated] = useState(false);
 
   useEffect(() => {
     getLog(ticketId)
@@ -405,12 +446,12 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
           {!isBug && !isNew && t.kbMatch && (
             <>
               <KBMatchCard match={t.kbMatch} />
-              <DraftResponseBlock draft={draft} onChange={setDraft} />
+              <DraftResponseBlock draft={draft} onChange={setDraft} ticketId={t.id} status={t.status} onStatusChange={(s) => setTicket({ ...t, status: s as any })} />
             </>
           )}
 
           {!isBug && !isNew && !t.kbMatch && t.agentResponse && (
-            <DraftResponseBlock draft={draft} onChange={setDraft} />
+            <DraftResponseBlock draft={draft} onChange={setDraft} ticketId={t.id} status={t.status} onStatusChange={(s) => setTicket({ ...t, status: s as any })} />
           )}
 
           {isBug && t.bugReport && <BugReportBlock bug={t.bugReport} />}
@@ -427,11 +468,37 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                     This is the first time we&apos;ve seen this pattern. Loopback has tracked it as a candidate new article.
                   </p>
                   <div className="mt-4 flex items-center justify-center gap-2">
-                    <Btn size="md" variant="primary" icon={<I.Plus className="w-3.5 h-3.5" />}>Create KB Article</Btn>
+                    <Btn
+                      size="md"
+                      variant="primary"
+                      icon={kbCreated ? <I.Check className="w-3.5 h-3.5" /> : <I.Plus className="w-3.5 h-3.5" />}
+                      disabled={kbCreating || kbCreated}
+                      onClick={async () => {
+                        setKbCreating(true);
+                        try {
+                          await createKBArticle({
+                            title: t.customerMessage.slice(0, 80),
+                            category: t.category || 'Other',
+                            symptoms: t.customerMessage,
+                            rootCause: '',
+                            resolution: t.agentResponse || '',
+                            triggerPhrases: [t.customerMessage.slice(0, 60)],
+                            frequency: 1,
+                            lastSeen: new Date().toISOString().split('T')[0],
+                            status: 'Active',
+                          });
+                          setKbCreated(true);
+                        } finally {
+                          setKbCreating(false);
+                        }
+                      }}
+                    >
+                      {kbCreated ? 'Article Created' : kbCreating ? 'Creating...' : 'Create KB Article'}
+                    </Btn>
                   </div>
                 </div>
               </Card>
-              {draft && <DraftResponseBlock draft={draft} onChange={setDraft} />}
+              {draft && <DraftResponseBlock draft={draft} onChange={setDraft} ticketId={t.id} status={t.status} onStatusChange={(s) => setTicket({ ...t, status: s as any })} />}
             </>
           )}
         </div>
