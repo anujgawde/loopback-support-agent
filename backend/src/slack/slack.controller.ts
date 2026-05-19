@@ -1,10 +1,16 @@
-import { Controller } from '@nestjs/common';
+import { Controller, Logger } from '@nestjs/common';
 import { Message } from 'nestjs-slack-bolt';
-import { AgentService, AgentResult } from '../agent/agent.service';
+import { AgentService } from '../agent/agent.service';
+import { SlackService } from './slack.service';
 
 @Controller()
 export class SlackController {
-  constructor(private agentService: AgentService) {}
+  private readonly logger = new Logger(SlackController.name);
+
+  constructor(
+    private agentService: AgentService,
+    private slackService: SlackService,
+  ) {}
 
   @Message('')
   async handleMessage({ message, client }: any) {
@@ -13,22 +19,49 @@ export class SlackController {
     const text = message.text || '';
     if (!text.trim()) return;
 
-    const result = await this.agentService.processMessage(text, 'Slack', {
-      channelId: message.channel,
-      userId: message.user,
-    });
+    const channelId = message.channel;
+    const threadTs = message.thread_ts || message.ts;
 
-    await client.chat.postMessage({
-      channel: message.channel,
-      thread_ts: message.ts,
-      text: this.formatSlackResponse(result),
-    });
-  }
+    try {
+      const result = await this.agentService.processMessage(text, 'Slack', {
+        channelId,
+        userId: message.user,
+      });
 
-  private formatSlackResponse(result: AgentResult): string {
-    const toolNames = result.toolCalls.map((t) => t.tool).join(' → ');
-    let response = `🔧 *Agent path:* ${toolNames}\n\n`;
-    response += result.response || '';
-    return response;
+      const blocks = this.slackService.formatAgentResponse(result);
+      const fallbackText = result.response || 'Agent processed your message.';
+
+      await client.chat.postMessage({
+        channel: channelId,
+        blocks,
+        text: fallbackText,
+        thread_ts: threadTs,
+      });
+
+      if (result.bugReport?.githubUrl && result.bugReport?.issueNumber) {
+        const issueBlocks = this.slackService.formatGitHubIssueNotification(
+          result.bugReport.githubUrl,
+          result.bugReport.issueNumber,
+          result.bugReport.title || 'Bug Report',
+        );
+        await client.chat.postMessage({
+          channel: channelId,
+          blocks: issueBlocks,
+          text: `Bug report filed: ${result.bugReport.githubUrl}`,
+          thread_ts: threadTs,
+        });
+      }
+    } catch (error) {
+      this.logger.error(`Slack message handling failed: ${error.message}`, error.stack);
+      try {
+        await client.chat.postMessage({
+          channel: channelId,
+          text: 'Sorry, I encountered an error processing your message. Our team has been notified.',
+          thread_ts: threadTs,
+        });
+      } catch (replyError) {
+        this.logger.error(`Failed to send error reply: ${replyError.message}`);
+      }
+    }
   }
 }

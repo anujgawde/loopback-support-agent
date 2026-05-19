@@ -22,6 +22,12 @@ export default () => ({
     token: process.env.GITHUB_TOKEN,
     repo: process.env.GITHUB_REPO,
   },
+  slack: {
+    botToken: process.env.SLACK_BOT_TOKEN,
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    appToken: process.env.SLACK_APP_TOKEN,
+    socketMode: process.env.SLACK_SOCKET_MODE === 'true',
+  },
   app: {
     companyName: process.env.COMPANY_NAME || 'Loopback',
     operatorName: process.env.OPERATOR_NAME || '',
