@@ -304,7 +304,7 @@ GET /kb
   Returns: All knowledge base articles
 ```
 
-The `POST /agent/process` endpoint is what the manual intake form calls. It's also what you'd hit if you wanted to integrate Loopback with something other than Slack (email, a different chat tool, an API gateway).
+The `POST /agent/process` endpoint is the core of the system. The manual intake form, the Slack bot, and any future integration all call the same underlying `AgentService.processMessage()` method. To integrate Loopback with a new channel (email, Intercom, Discord, a webhook), you call this endpoint with the customer message and handle the structured response in your channel. The backend doesn't need to change — source is currently scoped to Web and Slack, and is extensible.
 
 ## Example scenarios
 
