@@ -22,4 +22,9 @@ export default () => ({
     token: process.env.GITHUB_TOKEN,
     repo: process.env.GITHUB_REPO,
   },
+  app: {
+    companyName: process.env.COMPANY_NAME || 'Loopback',
+    operatorName: process.env.OPERATOR_NAME || '',
+    workspaceName: process.env.WORKSPACE_NAME || '',
+  },
 });

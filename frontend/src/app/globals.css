@@ -16,10 +16,10 @@
   --color-muted2: #78716C;
   --color-muted3: #A8A29E;
 
-  --color-accent: #EE5734;
-  --color-accent2: #D9472A;
-  --color-accent-bg: #FEF1ED;
-  --color-accent-line: #FBD3C7;
+  --color-accent: #EA5F3E;
+  --color-accent2: #D44E2D;
+  --color-accent-bg: #FDF1ED;
+  --color-accent-line: #FAD4C8;
 
   --color-crit: #DC2626;
   --color-high: #EA580C;
@@ -58,7 +58,7 @@ body {
 
 .ring-focus:focus {
   outline: none;
-  box-shadow: 0 0 0 1px #EE5734, 0 0 0 4px rgba(238, 87, 52, 0.18);
+  box-shadow: 0 0 0 1px #EA5F3E, 0 0 0 4px rgba(234, 95, 62, 0.18);
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

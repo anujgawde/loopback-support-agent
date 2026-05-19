@@ -7,6 +7,7 @@ import {
   Card, Btn, CopyButton, CategoryBadge, SeverityPill, StatusPill,
   DecisionBadge, ConfidencePill, ScoreBar, ToolPill, Field, Row,
 } from './primitives';
+import Image from 'next/image';
 import * as I from './icons';
 import { getLog } from '@/lib/api';
 import type { SupportLogEntry, BugReport } from '@/lib/types';
@@ -28,8 +29,8 @@ function ToolTimelineStep({ step, last }: { step: ToolTimelineStepData; last: bo
       <div
         className="absolute left-0 top-1 w-7 h-7 rounded-full flex items-center justify-center"
         style={{
-          background: isDone ? '#F0FDF4' : isRunning ? '#FEF1ED' : '#F5F5F4',
-          border: `1px solid ${isDone ? '#BBF7D0' : isRunning ? '#FBD3C7' : '#E7E5E4'}`,
+          background: isDone ? '#F0FDF4' : isRunning ? '#FDF1ED' : '#F5F5F4',
+          border: `1px solid ${isDone ? '#BBF7D0' : isRunning ? '#FAD4C8' : '#E7E5E4'}`,
         }}
       >
         {isDone && <I.Check className="w-3.5 h-3.5 text-low" />}
@@ -59,7 +60,7 @@ function ToolTimeline({ steps }: { steps: ToolTimelineStepData[] }) {
     <Card>
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[11px] tracking-wide font-medium text-muted2 uppercase">Agent reasoning</h3>
-        <span className="text-[10.5px] font-mono text-muted">gemini-2.5-flash · 1.84s</span>
+        <span className="text-[10.5px] font-mono text-muted">{steps.length} tool calls</span>
       </div>
       <div>
         {steps.map((s, i) => <ToolTimelineStep key={i} step={s} last={i === steps.length - 1} />)}
@@ -81,22 +82,20 @@ function TicketHeader({ t, onBack }: { t: SupportLogEntry; onBack: () => void })
 
       <div className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <CategoryBadge name={t.category || 'Other'} />
+          <div className="flex items-center gap-2 flex-wrap text-[12.5px]">
+            <CategoryBadge name={t.category || 'Other'} size="sm" />
             <SeverityPill level={t.severity || 'medium'} />
-            <span className="text-muted3 text-[12px]">&middot;</span>
-            <span className="text-[12.5px] text-muted">
-              {t.source === 'Slack' ? (
-                <span className="inline-flex items-center gap-1.5">
-                  <I.Slack className="w-3.5 h-3.5" /> Slack
-                  {t.slackChannel && <span className="font-mono text-muted2">{t.slackChannel}</span>}
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5"><I.Inbox className="w-3.5 h-3.5" /> Web</span>
-              )}
-              <span className="text-muted3 mx-1.5">&middot;</span>
-              {t.timestamp ? new Date(t.timestamp).toLocaleString() : ''}
-            </span>
+            <span className="text-muted3">&middot;</span>
+            {t.source === 'Slack' ? (
+              <span className="inline-flex items-center gap-1.5 text-muted">
+                <Image src="/logos/slack.svg" alt="Slack" width={14} height={14} /> Slack
+                {t.slackChannel && <span className="font-mono text-muted2">{t.slackChannel}</span>}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-muted"><I.Inbox className="w-3.5 h-3.5" /> Web</span>
+            )}
+            <span className="text-muted3">&middot;</span>
+            <span className="text-muted">{t.timestamp ? new Date(t.timestamp).toLocaleString() : ''}</span>
           </div>
           <h2 className="text-[18px] font-semibold tracking-tight text-ink">
             {t.customerName || 'Unknown'} <span className="text-muted">&middot;</span> <span className="text-muted">{t.customerOrg || 'Unknown'}</span>
@@ -124,7 +123,7 @@ function KBMatchCard({ match }: { match: { id: string; title: string; score: num
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[11px] tracking-wide font-medium text-muted2 uppercase">Top KB match</h3>
         <a className="inline-flex items-center gap-1 text-[11.5px] text-accent hover:underline cursor-pointer"
-           href="https://www.notion.so" target="_blank" rel="noreferrer">
+           href={`https://www.notion.so/${match.id.replace(/-/g, '')}`} target="_blank" rel="noreferrer">
           Open in Notion <I.External className="w-3 h-3" />
         </a>
       </div>
@@ -142,12 +141,12 @@ function KBMatchCard({ match }: { match: { id: string; title: string; score: num
           <div className="text-[10.5px] tracking-wide font-medium text-muted2 mt-1">SIMILARITY</div>
         </div>
       </div>
-      <ScoreBar value={match.score} color="#EE5734" height={6} />
+      <ScoreBar value={match.score} color="#EA5F3E" height={6} />
       <div className="mt-3 pt-3 border-t border-line flex items-center justify-between text-[11.5px] text-muted">
-        <a className="inline-flex items-center gap-1.5 hover:text-ink cursor-pointer">
+        <a className="inline-flex items-center gap-1.5 hover:text-ink cursor-pointer" href={`https://www.notion.so/${match.id.replace(/-/g, '')}`} target="_blank" rel="noreferrer">
           <I.Notion className="w-3.5 h-3.5" /> View in Notion
         </a>
-        <a className="inline-flex items-center gap-1.5 hover:text-ink cursor-pointer">
+        <a className="inline-flex items-center gap-1.5 hover:text-ink cursor-pointer" href="https://github.com/anujgawde/loopback-support-agent/issues" target="_blank" rel="noreferrer">
           <I.Github className="w-3.5 h-3.5" /> Related issues
         </a>
       </div>
@@ -201,7 +200,6 @@ function BugReportBlock({ bug }: { bug: BugReport }) {
             Auto-generated{bug.issueNumber ? ` · synced to GitHub issue #${bug.issueNumber}` : ''}
           </div>
         </div>
-        <Btn size="sm" variant="ghost" icon={<I.Edit className="w-3.5 h-3.5" />}>Edit</Btn>
       </div>
       <div className="p-6">
         <div className="space-y-4">
@@ -303,7 +301,7 @@ function TicketSidebar({ t }: { t: SupportLogEntry }) {
             <div key={i} className="flex flex-col gap-0.5 text-[12px] relative">
               <span
                 className="absolute -left-4 top-1 w-[11px] h-[11px] rounded-full border-2 border-page"
-                style={{ background: '#EE5734' }}
+                style={{ background: '#EA5F3E' }}
               />
               <span className="text-ink2">Used tool: {tool}</span>
               <span className="font-mono text-[10.5px] text-muted2">Agent</span>
@@ -368,8 +366,8 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
   function handleNav(id: string) {
     if (id === 'feed') router.push('/');
     else if (id === 'intake') router.push('/intake');
-    else if (id === 'notion') window.open('https://www.notion.so', '_blank');
-    else if (id === 'github') window.open('https://github.com', '_blank');
+    else if (id === 'notion') window.open('https://www.notion.so/364292ef3e5780afa34adecef9afb1f3?v=364292ef3e5780fc9038000ced7c022f', '_blank');
+    else if (id === 'github') window.open('https://github.com/anujgawde/loopback-support-agent/issues', '_blank');
   }
 
   if (loading) {
@@ -412,14 +410,9 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
           <span className="text-muted3">&middot;</span> {t.customerName} · {t.customerOrg}
         </span>
       }
-      headerRight={
-        <div className="flex items-center gap-2">
-          <Btn size="md" variant="ghost" icon={<I.External className="w-3.5 h-3.5" />}>Open in Slack</Btn>
-          <Btn size="md" variant="ghost">Dismiss</Btn>
-        </div>
-      }
+      headerRight={undefined}
     >
-      <div className="px-8 py-6 grid grid-cols-[minmax(0,1fr)_300px] gap-6">
+      <div className="px-8 py-6 grid grid-cols-[minmax(0,1fr)_300px] items-start gap-6">
         <div className="flex flex-col gap-5 min-w-0">
           <TicketHeader t={t} onBack={() => router.push('/')} />
           <ToolTimeline steps={steps} />
@@ -438,24 +431,28 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
           {isBug && t.bugReport && <BugReportBlock bug={t.bugReport} />}
 
           {isNew && (
-            <Card>
-              <div className="text-center py-6">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-info-bg border border-blue-200 mb-3">
-                  <I.Sparkle className="w-5 h-5 text-info" />
+            <>
+              <Card>
+                <div className="text-center py-6">
+                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-info-bg border border-blue-200 mb-3">
+                    <I.Sparkle className="w-5 h-5 text-info" />
+                  </div>
+                  <h3 className="text-[15px] font-semibold text-ink mb-1">No KB match — flagged as new issue</h3>
+                  <p className="text-[13px] text-muted max-w-md mx-auto leading-relaxed">
+                    This is the first time we&apos;ve seen this pattern. Loopback has tracked it as a candidate new article.
+                  </p>
+                  <div className="mt-4 flex items-center justify-center gap-2">
+                    <Btn size="md" variant="primary" icon={<I.Plus className="w-3.5 h-3.5" />}>Create KB Article</Btn>
+                  </div>
                 </div>
-                <h3 className="text-[15px] font-semibold text-ink mb-1">No KB match — flagged as new issue</h3>
-                <p className="text-[13px] text-muted max-w-md mx-auto leading-relaxed">
-                  This is the first time we&apos;ve seen this pattern. Loopback has tracked it as a candidate new article.
-                </p>
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <Btn size="md" variant="ghost">Dismiss as one-off</Btn>
-                  <Btn size="md" variant="primary" icon={<I.Plus className="w-3.5 h-3.5" />}>Create KB Article</Btn>
-                </div>
-              </div>
-            </Card>
+              </Card>
+              {draft && <DraftResponseBlock draft={draft} onChange={setDraft} />}
+            </>
           )}
         </div>
-        <TicketSidebar t={t} />
+        <div className="sticky top-6">
+          <TicketSidebar t={t} />
+        </div>
       </div>
     </Shell>
   );

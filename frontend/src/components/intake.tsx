@@ -109,7 +109,7 @@ function BugReportBlock({ bug }: { bug: BugReport }) {
 
 export function IntakePage() {
   const router = useRouter();
-  const [text, setText] = useState(SAMPLE_BUG_MSG);
+  const [text, setText] = useState('');
   const [phase, setPhase] = useState<'idle' | 'running' | 'done'>('idle');
   const [steps, setSteps] = useState<ProcessingStepData[]>([]);
   const [stepIdx, setStepIdx] = useState(0);

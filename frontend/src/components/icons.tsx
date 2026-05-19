@@ -42,7 +42,7 @@ type IconProps = SVGProps<SVGSVGElement>;
 export function Logo(p: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...p}>
-      <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="#EE5734" />
+      <rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="#EA5F3E" />
       <path d="M7 6.5v9.5a1.5 1.5 0 0 0 1.5 1.5h6.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M13 14.5l2 3 2-3" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>

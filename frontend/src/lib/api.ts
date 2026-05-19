@@ -36,6 +36,28 @@ export async function searchKB(query: string): Promise<KBArticle[]> {
   });
 }
 
+export interface DashboardStats {
+  articles: number;
+  resolutions: number;
+  hitRate: number;
+  agentOnline: boolean;
+  pendingTickets: number;
+}
+
+export interface AppConfig {
+  operatorName: string;
+  workspaceName: string;
+  companyName: string;
+}
+
+export async function getStats(): Promise<DashboardStats> {
+  return request<DashboardStats>('/analytics/stats');
+}
+
+export async function getAppConfig(): Promise<AppConfig> {
+  return request<AppConfig>('/analytics/config');
+}
+
 export async function processMessage(message: string): Promise<AgentResult> {
   return request<AgentResult>('/agent/process', {
     method: 'POST',

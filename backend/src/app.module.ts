@@ -9,6 +9,7 @@ import { LLMModule } from './llm/llm.module';
 import { GitHubModule } from './github/github.module';
 import { SupportLogModule } from './support-log/support-log.module';
 import { AgentModule } from './agent/agent.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { SlackBotModule } from './slack/slack.module';
 
 const optionalModules: any[] = [];
@@ -27,6 +28,7 @@ if (process.env.SLACK_BOT_TOKEN) {
     GitHubModule,
     SupportLogModule,
     AgentModule,
+    AnalyticsModule,
     ...optionalModules,
   ],
 })
