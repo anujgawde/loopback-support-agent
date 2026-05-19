@@ -97,9 +97,6 @@ function TicketHeader({ t, onBack }: { t: SupportLogEntry; onBack: () => void })
             <span className="text-muted3">&middot;</span>
             <span className="text-muted">{t.timestamp ? new Date(t.timestamp).toLocaleString() : ''}</span>
           </div>
-          <h2 className="text-[18px] font-semibold tracking-tight text-ink">
-            {t.customerName || 'Unknown'} <span className="text-muted">&middot;</span> <span className="text-muted">{t.customerOrg || 'Unknown'}</span>
-          </h2>
         </div>
         <StatusPill status={t.status} />
       </div>
@@ -162,10 +159,7 @@ function DraftResponseBlock({ draft, onChange }: { draft: string; onChange: (v: 
           <div className="text-[11px] tracking-wide font-medium text-muted2 uppercase">Draft response</div>
           <div className="text-[11.5px] text-muted mt-0.5">Generated from KB · ready to send</div>
         </div>
-        <div className="flex items-center gap-2">
-          <Btn size="sm" variant="ghost" icon={<I.Refresh className="w-3.5 h-3.5" />}>Regenerate</Btn>
-          <Btn size="sm" variant="ghost" icon={<I.Edit className="w-3.5 h-3.5" />}>Adjust tone</Btn>
-        </div>
+        {/* TODO: wire up Regenerate and Adjust tone buttons to call LLM */}
       </div>
       <div className="p-5">
         <textarea
@@ -277,17 +271,8 @@ function TicketSidebar({ t }: { t: SupportLogEntry }) {
       </Card>
 
       <Card>
-        <h3 className="text-[11px] tracking-wide font-medium text-muted2 uppercase mb-3">Customer</h3>
-        <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-300 to-rose-400 flex items-center justify-center text-white text-[12px] font-semibold">
-            {(t.customerName || 'U').split(' ').map(p => p[0]).join('').slice(0, 2)}
-          </div>
-          <div className="leading-tight">
-            <div className="text-[13.5px] font-medium text-ink">{t.customerName || 'Unknown'}</div>
-            <div className="text-[11.5px] text-muted">{t.customerOrg || 'Unknown'}</div>
-          </div>
-        </div>
-        <div className="space-y-2 text-[12px] pt-3 border-t border-line">
+        <h3 className="text-[11px] tracking-wide font-medium text-muted2 uppercase mb-3">Source</h3>
+        <div className="space-y-2 text-[12px]">
           <Row label="Source"><span className="text-ink2">{t.source}</span></Row>
           {t.slackChannel && <Row label="Channel"><span className="font-mono text-ink2">{t.slackChannel}</span></Row>}
         </div>
@@ -407,7 +392,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
       title={`Ticket ${t.id}`}
       breadcrumb={
         <span className="inline-flex items-center gap-2 text-[12.5px] text-muted">
-          <span className="text-muted3">&middot;</span> {t.customerName} · {t.customerOrg}
+          <span className="text-muted3">&middot;</span> {t.category || 'Other'}
         </span>
       }
       headerRight={undefined}

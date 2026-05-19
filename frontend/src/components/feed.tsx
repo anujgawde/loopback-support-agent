@@ -145,18 +145,10 @@ function FeedRow({
       </td>
 
       <td className="px-4 py-3.5 align-top border-b border-line min-w-65">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-[13px] font-medium text-ink whitespace-nowrap">
-            {t.customerName || "Unknown"}
-          </span>
-          <span className="text-[12px] text-muted2 whitespace-nowrap">
-            · {t.customerOrg || "Unknown"}
-          </span>
-          <CategoryBadge name={t.category || "Other"} size="sm" />
-        </div>
-        <div className="text-[12.5px] text-muted leading-snug line-clamp-2 max-w-105">
+        <div className="text-[12.5px] text-ink2 leading-snug line-clamp-2 max-w-105 mb-1.5">
           {t.customerMessage}
         </div>
+        <CategoryBadge name={t.category || "Other"} size="sm" />
       </td>
 
       <td className="px-4 py-3.5 align-top border-b border-line w-60">
@@ -321,7 +313,7 @@ export function FeedPage() {
                   Ticket
                 </th>
                 <th className="text-left px-4 py-2 whitespace-nowrap font-medium">
-                  Customer & message
+                  Customer Message
                 </th>
                 <th className="text-left px-4 py-2 whitespace-nowrap font-medium w-60">
                   Source · Tools used
