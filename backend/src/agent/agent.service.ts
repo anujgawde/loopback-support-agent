@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { LLMService } from '../llm/llm.service';
 import { KBService } from '../kb/kb.service';
 import { GitHubService } from '../github/github.service';
-import { SupportLogService } from '../support-log/support-log.service';
+import { SupportLogService, SupportLogEntry } from '../support-log/support-log.service';
 import { BugReport } from '../common/types';
 import { AGENT_TOOLS } from './tools/tool-definitions';
 import { getAgentSystemPrompt } from './prompts/agent-system.prompt';
@@ -49,11 +49,33 @@ export class AgentService {
   async processMessage(
     message: string,
     source: 'Slack' | 'Web',
-    metadata?: { channelId?: string; userId?: string },
+    metadata?: { channelId?: string; userId?: string; threadTs?: string; existingTicketId?: string },
   ): Promise<AgentResult> {
+    let existingEntry: SupportLogEntry | null = null;
+
+    if (source === 'Slack' && metadata?.threadTs) {
+      existingEntry = await this.supportLogService.findByThreadTs(metadata.threadTs);
+    }
+
+    if (source === 'Web' && metadata?.existingTicketId) {
+      try {
+        existingEntry = await this.supportLogService.getById(metadata.existingTicketId);
+      } catch {
+        existingEntry = null;
+      }
+    }
+
+    let augmentedMessage = message;
+    if (existingEntry && existingEntry.conversationHistory.length > 0) {
+      const priorContext = existingEntry.conversationHistory
+        .map((turn) => `[${turn.role.toUpperCase()}]: ${turn.message}`)
+        .join('\n\n');
+      augmentedMessage = `--- Prior conversation on this ticket ---\n${priorContext}\n--- New follow-up message ---\n${message}`;
+    }
+
     const systemPrompt = getAgentSystemPrompt();
     const conversationHistory: any[] = [
-      { role: 'user', parts: [{ text: message }] },
+      { role: 'user', parts: [{ text: augmentedMessage }] },
     ];
 
     const toolResults: ToolCallLog[] = [];
@@ -193,36 +215,53 @@ export class AgentService {
       bugReport.githubUrl = githubUrl;
     }
 
-    const logEntry = await this.supportLogService.create({
-      timestamp: new Date().toISOString(),
-      customerMessage: message,
-      source,
-      agentResponse: finalResponse,
-      toolCalls: toolResults,
-      kbArticleMatched: topArticleTitle,
-      confidence: topConfidence,
-      category,
-      severity,
-      decision,
-      kbMatch: kbMatchData,
-      bugReport,
-      bugReportFiled: bugFiled,
-      githubIssueUrl: githubUrl,
-      githubIssueNumber,
-      slackChannelId: metadata?.channelId,
-      slackUserId: metadata?.userId,
-      status: 'Pending Review',
-    });
+    let logId: string;
+
+    if (existingEntry) {
+      const updated = await this.supportLogService.appendFollowUp(
+        existingEntry.id,
+        message,
+        finalResponse,
+        toolResults,
+        existingEntry,
+      );
+      logId = updated.id;
+    } else {
+      const logEntry = await this.supportLogService.create({
+        timestamp: new Date().toISOString(),
+        customerMessage: message,
+        source,
+        agentResponse: finalResponse,
+        toolCalls: toolResults,
+        kbArticleMatched: topArticleTitle,
+        confidence: topConfidence,
+        category,
+        severity,
+        decision,
+        kbMatch: kbMatchData,
+        bugReport,
+        bugReportFiled: bugFiled,
+        githubIssueUrl: githubUrl,
+        githubIssueNumber,
+        slackChannelId: metadata?.channelId,
+        slackUserId: metadata?.userId,
+        slackThreadTs: metadata?.threadTs,
+        status: 'Pending Review',
+      });
+      logId = logEntry.id;
+    }
 
     return {
       response: finalResponse,
       toolCalls: toolResults,
-      logId: logEntry.id,
+      logId,
       classification: { category, severity },
       decision: {
         action: decision,
         confidence: topConfidence,
-        reasoning: `Based on ${toolResults.length} tool calls`,
+        reasoning: existingEntry
+          ? `Follow-up on existing ticket · ${toolResults.length} tool calls`
+          : `Based on ${toolResults.length} tool calls`,
       },
       kbMatches,
       bugReport,

@@ -31,6 +31,10 @@ export async function updateLogStatus(
   });
 }
 
+export async function markKbArticleCreated(logId: string): Promise<SupportLogEntry> {
+  return request<SupportLogEntry>(`/logs/${logId}/kb-created`, { method: 'PATCH' });
+}
+
 export async function createKBArticle(article: Record<string, unknown>): Promise<KBArticle> {
   return request<KBArticle>('/kb/articles', {
     method: 'POST',
@@ -75,9 +79,9 @@ export async function getAppConfig(): Promise<AppConfig> {
   return request<AppConfig>('/analytics/config');
 }
 
-export async function processMessage(message: string): Promise<AgentResult> {
+export async function processMessage(message: string, ticketId?: string): Promise<AgentResult> {
   return request<AgentResult>('/agent/process', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, ...(ticketId ? { ticketId } : {}) }),
   });
 }

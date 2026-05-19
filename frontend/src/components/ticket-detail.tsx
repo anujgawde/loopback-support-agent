@@ -9,8 +9,8 @@ import {
 } from './primitives';
 import Image from 'next/image';
 import * as I from './icons';
-import { getLog, updateLogStatus, createKBArticle } from '@/lib/api';
-import type { SupportLogEntry, BugReport } from '@/lib/types';
+import { getLog, updateLogStatus, createKBArticle, markKbArticleCreated } from '@/lib/api';
+import type { SupportLogEntry, BugReport, ConversationTurn } from '@/lib/types';
 
 interface ToolTimelineStepData {
   tool: string;
@@ -371,6 +371,34 @@ function buildTimelineSteps(t: SupportLogEntry): ToolTimelineStepData[] {
   ];
 }
 
+function ConversationHistory({ turns }: { turns: ConversationTurn[] }) {
+  return (
+    <Card padded={false}>
+      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
+        <div className="text-[11px] tracking-wide font-medium text-muted2 uppercase">
+          Conversation history
+        </div>
+        <span className="text-[10.5px] font-mono text-muted">{turns.length} messages</span>
+      </div>
+      <div className="divide-y divide-line">
+        {turns.map((turn, i) => (
+          <div key={i} className={`px-5 py-3.5 ${turn.role === 'agent' ? 'bg-surface/40' : ''}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className={`text-[11px] font-medium uppercase ${turn.role === 'customer' ? 'text-accent' : 'text-muted2'}`}>
+                {turn.role === 'customer' ? 'Customer' : 'Agent'}
+              </span>
+              <span className="text-[10.5px] text-muted font-mono">
+                {new Date(turn.timestamp).toLocaleString()}
+              </span>
+            </div>
+            <p className="text-[13.5px] text-ink2 leading-relaxed">{turn.message}</p>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
 export function TicketDetailPage({ ticketId }: { ticketId: string }) {
   const router = useRouter();
   const [ticket, setTicket] = useState<SupportLogEntry | null>(null);
@@ -384,6 +412,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
       .then(t => {
         setTicket(t);
         setDraft(t.agentResponse || '');
+        setKbCreated(t.kbArticleCreated);
       })
       .catch(() => setTicket(null))
       .finally(() => setLoading(false));
@@ -441,6 +470,9 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
       <div className="px-8 py-6 grid grid-cols-[minmax(0,1fr)_300px] items-start gap-6">
         <div className="flex flex-col gap-5 min-w-0">
           <TicketHeader t={t} onBack={() => router.push('/')} />
+          {t.conversationHistory && t.conversationHistory.length > 1 && (
+            <ConversationHistory turns={t.conversationHistory} />
+          )}
           <ToolTimeline steps={steps} />
 
           {!isBug && !isNew && t.kbMatch && (
@@ -487,6 +519,7 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                             lastSeen: new Date().toISOString().split('T')[0],
                             status: 'Active',
                           });
+                          await markKbArticleCreated(t.id);
                           setKbCreated(true);
                         } finally {
                           setKbCreating(false);

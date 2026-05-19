@@ -25,6 +25,12 @@ export type TicketStatus =
   | 'Dismissed'
   | 'No match';
 
+export interface ConversationTurn {
+  role: 'customer' | 'agent';
+  message: string;
+  timestamp: string;
+}
+
 export interface ToolCallLog {
   tool: string;
   args: Record<string, unknown>;
@@ -74,6 +80,9 @@ export interface SupportLogEntry {
   bugReportFiled: boolean;
   githubIssueUrl: string;
   githubIssueNumber: number | null;
+  kbArticleCreated: boolean;
+  slackThreadTs: string;
+  conversationHistory: ConversationTurn[];
   status: TicketStatus;
 }
 

@@ -26,6 +26,7 @@ export class SlackController {
       const result = await this.agentService.processMessage(text, 'Slack', {
         channelId,
         userId: message.user,
+        threadTs,
       });
 
       const blocks = this.slackService.formatAgentResponse(result);

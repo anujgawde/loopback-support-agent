@@ -7,8 +7,10 @@ export class AgentController {
 
   @Post('process')
   async process(
-    @Body() body: { message: string },
+    @Body() body: { message: string; ticketId?: string },
   ): Promise<AgentResult> {
-    return this.agentService.processMessage(body.message, 'Web');
+    return this.agentService.processMessage(body.message, 'Web', {
+      existingTicketId: body.ticketId || undefined,
+    });
   }
 }

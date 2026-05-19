@@ -118,13 +118,7 @@ function ToolPath({ tools }: { tools: string[] }) {
   );
 }
 
-function FeedRow({
-  t,
-  onClick,
-}: {
-  t: SupportLogEntry;
-  onClick: () => void;
-}) {
+function FeedRow({ t, onClick }: { t: SupportLogEntry; onClick: () => void }) {
   const sev = SEVERITY[t.severity] || SEVERITY.low;
   const when = t.timestamp ? formatRelativeTime(t.timestamp) : "";
   const rowCls = `cursor-pointer transition-colors hover:bg-surface`;
@@ -231,8 +225,16 @@ export function FeedPage() {
 
   function handleNav(id: string) {
     if (id === "intake") router.push("/intake");
-    else if (id === "notion") window.open("https://www.notion.so/364292ef3e5780afa34adecef9afb1f3?v=364292ef3e5780fc9038000ced7c022f", "_blank");
-    else if (id === "github") window.open("https://github.com/anujgawde/loopback-support-agent/issues", "_blank");
+    else if (id === "notion")
+      window.open(
+        "https://www.notion.so/364292ef3e5780afa34adecef9afb1f3?v=364292ef3e5780fc9038000ced7c022f",
+        "_blank",
+      );
+    else if (id === "github")
+      window.open(
+        "https://github.com/anujgawde/loopback-support-agent/issues",
+        "_blank",
+      );
   }
 
   return (
@@ -300,7 +302,7 @@ export function FeedPage() {
           icon={<I.Bolt className="w-3.5 h-3.5" />}
           onClick={() => router.push("/intake")}
         >
-          New ticket
+          New Ticket
         </Btn>
       }
     >

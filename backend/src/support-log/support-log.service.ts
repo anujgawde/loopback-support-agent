@@ -2,6 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client } from '@notionhq/client';
 
+export interface ConversationTurn {
+  role: 'customer' | 'agent';
+  message: string;
+  timestamp: string;
+}
+
 export interface SupportLogEntry {
   id: string;
   title: string;
@@ -23,6 +29,9 @@ export interface SupportLogEntry {
   bugReportFiled: boolean;
   githubIssueUrl: string;
   githubIssueNumber: number | null;
+  kbArticleCreated: boolean;
+  slackThreadTs: string;
+  conversationHistory: ConversationTurn[];
   status: 'Pending Review' | 'Sent' | 'Resolved' | 'Dismissed';
 }
 
@@ -46,6 +55,7 @@ export interface CreateSupportLogInput {
   githubIssueNumber?: number | null;
   slackChannelId?: string;
   slackUserId?: string;
+  slackThreadTs?: string;
   status: string;
 }
 
@@ -72,6 +82,13 @@ export class SupportLogService {
     const title = input.customerMessage.slice(0, 50);
     const toolsUsed = input.toolCalls.map((t) => t.tool).join(', ');
 
+    const conversationHistory: ConversationTurn[] = [
+      { role: 'customer', message: input.customerMessage, timestamp: input.timestamp },
+    ];
+    if (input.agentResponse) {
+      conversationHistory.push({ role: 'agent', message: input.agentResponse, timestamp: input.timestamp });
+    }
+
     const enrichedData = JSON.stringify({
       customerName: input.customerName || '',
       customerOrg: input.customerOrg || '',
@@ -81,6 +98,7 @@ export class SupportLogService {
       kbMatch: input.kbMatch || null,
       bugReport: input.bugReport || null,
       githubIssueNumber: input.githubIssueNumber || null,
+      conversationHistory,
     });
 
     const response = await this.notion.pages.create({
@@ -101,10 +119,14 @@ export class SupportLogService {
         },
         Confidence: { number: input.confidence || 0 },
         'Bug Report Filed': { checkbox: input.bugReportFiled || false },
+        'KB Article Created': { checkbox: false },
         'GitHub Issue URL': { url: input.githubIssueUrl || null },
         Status: { select: { name: input.status || 'Pending Review' } },
         'Slack Channel': {
           rich_text: [{ text: { content: input.slackChannelId || '' } }],
+        },
+        'Slack Thread TS': {
+          rich_text: [{ text: { content: input.slackThreadTs || '' } }],
         },
         'Enriched Data': {
           rich_text: this.splitRichText(enrichedData),
@@ -159,6 +181,70 @@ export class SupportLogService {
     return this.getById(id);
   }
 
+  async findByThreadTs(threadTs: string): Promise<SupportLogEntry | null> {
+    if (!this.databaseId || !threadTs) return null;
+
+    const response = await this.notion.databases.query({
+      database_id: this.databaseId,
+      filter: {
+        property: 'Slack Thread TS',
+        rich_text: { equals: threadTs },
+      },
+      page_size: 1,
+    });
+
+    if (response.results.length === 0) return null;
+    return this.pageToEntry(response.results[0]);
+  }
+
+  async appendFollowUp(
+    pageId: string,
+    newCustomerMessage: string,
+    newAgentResponse: string | null,
+    toolCalls: { tool: string }[],
+    existingEntry: SupportLogEntry,
+  ): Promise<SupportLogEntry> {
+    const history = [...(existingEntry.conversationHistory || [])];
+    history.push({ role: 'customer', message: newCustomerMessage, timestamp: new Date().toISOString() });
+    if (newAgentResponse) {
+      history.push({ role: 'agent', message: newAgentResponse, timestamp: new Date().toISOString() });
+    }
+
+    let existingEnriched: any = {};
+    try {
+      const page: any = await this.notion.pages.retrieve({ page_id: pageId });
+      const enrichedStr = this.extractRichText(page.properties['Enriched Data']);
+      if (enrichedStr) existingEnriched = JSON.parse(enrichedStr);
+    } catch {}
+
+    const updatedEnriched = { ...existingEnriched, conversationHistory: history };
+
+    const newTools = toolCalls.map((t) => t.tool);
+    const allTools = [...existingEntry.toolsUsed, ...newTools].join(', ');
+
+    await this.notion.pages.update({
+      page_id: pageId,
+      properties: {
+        'Agent Response': { rich_text: this.splitRichText(newAgentResponse || '') },
+        'Tools Used': { rich_text: [{ text: { content: allTools } }] },
+        'Enriched Data': { rich_text: this.splitRichText(JSON.stringify(updatedEnriched)) },
+        Status: { select: { name: 'Pending Review' } },
+      },
+    });
+
+    return this.getById(pageId);
+  }
+
+  async markKbArticleCreated(id: string): Promise<SupportLogEntry> {
+    await this.notion.pages.update({
+      page_id: id,
+      properties: {
+        'KB Article Created': { checkbox: true },
+      },
+    });
+    return this.getById(id);
+  }
+
   private pageToEntry(page: any): SupportLogEntry {
     const props = page.properties;
     const toolsUsedStr = this.extractRichText(props['Tools Used']);
@@ -196,6 +282,9 @@ export class SupportLogService {
       kbMatch: enriched.kbMatch || null,
       bugReport: enriched.bugReport || null,
       bugReportFiled: props['Bug Report Filed']?.checkbox || false,
+      kbArticleCreated: props['KB Article Created']?.checkbox || false,
+      slackThreadTs: this.extractRichText(props['Slack Thread TS']),
+      conversationHistory: enriched.conversationHistory || [],
       githubIssueUrl,
       githubIssueNumber,
       status: props['Status']?.select?.name || 'Pending Review',

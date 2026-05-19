@@ -22,4 +22,9 @@ export class SupportLogController {
   ) {
     return this.supportLogService.updateStatus(id, status);
   }
+
+  @Patch(':id/kb-created')
+  async markKbArticleCreated(@Param('id') id: string) {
+    return this.supportLogService.markKbArticleCreated(id);
+  }
 }
