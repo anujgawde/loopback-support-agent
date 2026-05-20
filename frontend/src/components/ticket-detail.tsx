@@ -9,7 +9,10 @@ import {
 } from './primitives';
 import Image from 'next/image';
 import * as I from './icons';
-import { getLog, updateLogStatus, createKBArticle, markKbArticleCreated } from '@/lib/api';
+import {
+  getLog, updateLogStatus, createKBArticle, markKbArticleCreated,
+  updateKBArticle, regenerateDraft, fileGithubIssue,
+} from '@/lib/api';
 import type { SupportLogEntry, BugReport, ConversationTurn } from '@/lib/types';
 
 interface ToolTimelineStepData {
@@ -406,6 +409,14 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
   const [draft, setDraft] = useState('');
   const [kbCreating, setKbCreating] = useState(false);
   const [kbCreated, setKbCreated] = useState(false);
+  const [kbArticleId, setKbArticleId] = useState<string | null>(null);
+  const [kbResolution, setKbResolution] = useState('');
+  const [kbRootCause, setKbRootCause] = useState('');
+  const [kbSaving, setKbSaving] = useState(false);
+  const [kbSaved, setKbSaved] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [filingIssue, setFilingIssue] = useState(false);
+  const [githubIssue, setGithubIssue] = useState<{ url: string; number: number } | null>(null);
 
   useEffect(() => {
     getLog(ticketId)
@@ -497,40 +508,170 @@ export function TicketDetailPage({ ticketId }: { ticketId: string }) {
                   </div>
                   <h3 className="text-[15px] font-semibold text-ink mb-1">No KB match — flagged as new issue</h3>
                   <p className="text-[13px] text-muted max-w-md mx-auto leading-relaxed">
-                    This is the first time we&apos;ve seen this pattern. Loopback has tracked it as a candidate new article.
+                    This is the first time we&apos;ve seen this pattern. Create a KB article and add resolution steps so the agent can handle it next time.
                   </p>
                   <div className="mt-4 flex items-center justify-center gap-2">
-                    <Btn
-                      size="md"
-                      variant="primary"
-                      icon={kbCreated ? <I.Check className="w-3.5 h-3.5" /> : <I.Plus className="w-3.5 h-3.5" />}
-                      disabled={kbCreating || kbCreated}
-                      onClick={async () => {
-                        setKbCreating(true);
-                        try {
-                          await createKBArticle({
-                            title: t.customerMessage.slice(0, 80),
-                            category: t.category || 'Other',
-                            symptoms: t.customerMessage,
-                            rootCause: '',
-                            resolution: t.agentResponse || '',
-                            triggerPhrases: [t.customerMessage.slice(0, 60)],
-                            frequency: 1,
-                            lastSeen: new Date().toISOString().split('T')[0],
-                            status: 'Active',
-                          });
-                          await markKbArticleCreated(t.id);
-                          setKbCreated(true);
-                        } finally {
-                          setKbCreating(false);
-                        }
-                      }}
-                    >
-                      {kbCreated ? 'Article Created' : kbCreating ? 'Creating...' : 'Create KB Article'}
-                    </Btn>
+                    {!kbCreated && (
+                      <Btn
+                        size="md"
+                        variant="primary"
+                        icon={<I.Plus className="w-3.5 h-3.5" />}
+                        disabled={kbCreating}
+                        onClick={async () => {
+                          setKbCreating(true);
+                          try {
+                            const article = await createKBArticle({
+                              title: t.customerMessage.slice(0, 80),
+                              category: t.category || 'Other',
+                              symptoms: t.customerMessage,
+                              rootCause: '',
+                              resolution: '',
+                              triggerPhrases: [t.customerMessage.slice(0, 60)],
+                              frequency: 1,
+                              lastSeen: new Date().toISOString().split('T')[0],
+                              status: 'Active',
+                            });
+                            await markKbArticleCreated(t.id);
+                            setKbArticleId(article.id);
+                            setKbCreated(true);
+                          } finally {
+                            setKbCreating(false);
+                          }
+                        }}
+                      >
+                        {kbCreating ? 'Creating...' : 'Create KB Article'}
+                      </Btn>
+                    )}
+                    {!githubIssue && (
+                      <Btn
+                        size="md"
+                        variant="ghost"
+                        icon={<I.Github className="w-3.5 h-3.5" />}
+                        disabled={filingIssue}
+                        onClick={async () => {
+                          setFilingIssue(true);
+                          try {
+                            const result = await fileGithubIssue({
+                              title: t.customerMessage.slice(0, 80),
+                              body: `**Customer message:**\n${t.customerMessage}\n\n**Category:** ${t.category || 'Other'}\n**Severity:** ${t.severity || 'medium'}`,
+                              labels: ['bug', t.category?.toLowerCase() || 'other'],
+                            });
+                            setGithubIssue(result);
+                          } finally {
+                            setFilingIssue(false);
+                          }
+                        }}
+                      >
+                        {filingIssue ? 'Filing...' : 'File GitHub Issue'}
+                      </Btn>
+                    )}
+                    {githubIssue && (
+                      <Btn
+                        size="md"
+                        variant="ghost"
+                        icon={<I.External className="w-3.5 h-3.5" />}
+                        onClick={() => window.open(githubIssue.url, '_blank')}
+                      >
+                        Issue #{githubIssue.number}
+                      </Btn>
+                    )}
                   </div>
                 </div>
               </Card>
+
+              {kbCreated && (
+                <Card padded={false}>
+                  <div className="px-5 py-3.5 flex items-center justify-between border-b border-line">
+                    <div>
+                      <div className="text-[11px] tracking-wide font-medium text-muted2 uppercase">KB Article</div>
+                      <div className="text-[11.5px] text-muted mt-0.5">Add resolution steps so the agent can respond next time</div>
+                    </div>
+                    {kbSaved && (
+                      <span className="text-[11.5px] text-green-600 flex items-center gap-1">
+                        <I.Check className="w-3 h-3" /> Saved
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <label className="block text-[11px] tracking-wide font-medium text-muted2 uppercase mb-1.5">Root cause</label>
+                      <textarea
+                        value={kbRootCause}
+                        onChange={(e) => { setKbRootCause(e.target.value); setKbSaved(false); }}
+                        rows={3}
+                        placeholder="What is causing this issue?"
+                        className="w-full bg-surface border border-line rounded-md p-3 text-[13.5px] leading-relaxed text-ink2 resize-none ring-focus placeholder:text-muted3"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] tracking-wide font-medium text-muted2 uppercase mb-1.5">Resolution steps</label>
+                      <textarea
+                        value={kbResolution}
+                        onChange={(e) => { setKbResolution(e.target.value); setKbSaved(false); }}
+                        rows={5}
+                        placeholder="Step-by-step instructions to resolve this issue"
+                        className="w-full bg-surface border border-line rounded-md p-3 text-[13.5px] leading-relaxed text-ink2 resize-none ring-focus placeholder:text-muted3"
+                      />
+                    </div>
+                  </div>
+                  <div className="px-5 py-3.5 border-t border-line flex items-center justify-between bg-surface/60">
+                    <div className="text-[11.5px] text-muted">
+                      {kbResolution.trim() ? 'Resolution added — you can regenerate the draft response' : 'Add resolution steps to unlock draft regeneration'}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Btn
+                        size="md"
+                        variant="ghost"
+                        disabled={kbSaving || (!kbResolution.trim() && !kbRootCause.trim())}
+                        onClick={async () => {
+                          if (!kbArticleId) return;
+                          setKbSaving(true);
+                          try {
+                            await updateKBArticle(kbArticleId, {
+                              resolution: kbResolution,
+                              rootCause: kbRootCause,
+                            });
+                            setKbSaved(true);
+                          } finally {
+                            setKbSaving(false);
+                          }
+                        }}
+                      >
+                        {kbSaving ? 'Saving...' : 'Save to KB'}
+                      </Btn>
+                      <Btn
+                        size="md"
+                        variant="primary"
+                        disabled={!kbResolution.trim() || regenerating}
+                        onClick={async () => {
+                          setRegenerating(true);
+                          try {
+                            if (kbArticleId && !kbSaved) {
+                              await updateKBArticle(kbArticleId, {
+                                resolution: kbResolution,
+                                rootCause: kbRootCause,
+                              });
+                              setKbSaved(true);
+                            }
+                            const result = await regenerateDraft({
+                              customerMessage: t.customerMessage,
+                              resolution: kbResolution,
+                              rootCause: kbRootCause || undefined,
+                              logId: t.id,
+                            });
+                            setDraft(result.draftResponse);
+                          } finally {
+                            setRegenerating(false);
+                          }
+                        }}
+                      >
+                        {regenerating ? 'Regenerating...' : 'Regenerate Draft Response'}
+                      </Btn>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               {draft && <DraftResponseBlock draft={draft} onChange={setDraft} ticketId={t.id} status={t.status} onStatusChange={(s) => setTicket({ ...t, status: s as any })} />}
             </>
           )}

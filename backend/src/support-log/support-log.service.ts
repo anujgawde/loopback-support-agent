@@ -235,6 +235,18 @@ export class SupportLogService {
     return this.getById(pageId);
   }
 
+  async updateAgentResponse(id: string, agentResponse: string): Promise<SupportLogEntry> {
+    await this.notion.pages.update({
+      page_id: id,
+      properties: {
+        'Agent Response': {
+          rich_text: this.splitRichText(agentResponse),
+        },
+      },
+    });
+    return this.getById(id);
+  }
+
   async markKbArticleCreated(id: string): Promise<SupportLogEntry> {
     await this.notion.pages.update({
       page_id: id,

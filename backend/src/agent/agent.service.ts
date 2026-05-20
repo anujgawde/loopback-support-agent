@@ -8,6 +8,7 @@ import { AGENT_TOOLS } from './tools/tool-definitions';
 import { getAgentSystemPrompt } from './prompts/agent-system.prompt';
 import { buildDraftResponsePrompt } from './prompts/draft-response.prompt';
 import { buildBugReportPrompt } from './prompts/generate-bug-report.prompt';
+import { buildRegenerateDraftPrompt } from './prompts/regenerate-draft.prompt';
 
 export interface ToolCallLog {
   tool: string;
@@ -266,6 +267,26 @@ export class AgentService {
       kbMatches,
       bugReport,
     };
+  }
+
+  async regenerateDraft(
+    customerMessage: string,
+    resolution: string,
+    rootCause?: string,
+    logId?: string,
+  ): Promise<{ draftResponse: string }> {
+    const { system, user } = buildRegenerateDraftPrompt(
+      customerMessage,
+      resolution,
+      rootCause,
+    );
+    const draftResponse = await this.llmService.generateText(system, user);
+
+    if (logId) {
+      await this.supportLogService.updateAgentResponse(logId, draftResponse);
+    }
+
+    return { draftResponse };
   }
 
   private async executeTool(name: string, args: any): Promise<any> {

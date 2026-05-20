@@ -79,6 +79,39 @@ export async function getAppConfig(): Promise<AppConfig> {
   return request<AppConfig>('/analytics/config');
 }
 
+export async function updateKBArticle(
+  id: string,
+  updates: Record<string, unknown>,
+): Promise<void> {
+  await request<{ success: boolean }>(`/kb/articles/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function regenerateDraft(body: {
+  customerMessage: string;
+  resolution: string;
+  rootCause?: string;
+  logId?: string;
+}): Promise<{ draftResponse: string }> {
+  return request<{ draftResponse: string }>('/agent/regenerate-draft', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
+export async function fileGithubIssue(body: {
+  title: string;
+  body: string;
+  labels?: string[];
+}): Promise<{ url: string; number: number }> {
+  return request<{ url: string; number: number }>('/github/issues', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+}
+
 export async function processMessage(message: string, ticketId?: string): Promise<AgentResult> {
   return request<AgentResult>('/agent/process', {
     method: 'POST',

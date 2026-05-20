@@ -13,4 +13,22 @@ export class AgentController {
       existingTicketId: body.ticketId || undefined,
     });
   }
+
+  @Post('regenerate-draft')
+  async regenerateDraft(
+    @Body()
+    body: {
+      customerMessage: string;
+      resolution: string;
+      rootCause?: string;
+      logId?: string;
+    },
+  ): Promise<{ draftResponse: string }> {
+    return this.agentService.regenerateDraft(
+      body.customerMessage,
+      body.resolution,
+      body.rootCause,
+      body.logId,
+    );
+  }
 }
