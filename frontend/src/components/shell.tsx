@@ -141,23 +141,6 @@ function Sidebar({
           </div>
         ))}
       </nav>
-
-      <div className="mt-auto p-3">
-        <div className="rounded-md border border-line bg-surface p-2.5">
-          <div className="text-[11px] text-ink2 font-medium mb-0.5">
-            KB compounding
-          </div>
-          <div className="text-[10.5px] text-muted">
-            {stats
-              ? `${stats.articles} articles · ${stats.resolutions} resolved`
-              : "Loading…"}
-          </div>
-          <div className="mt-2 flex items-center gap-1.5 text-[10.5px] text-accent">
-            <I.Sparkle className="w-3 h-3" />{" "}
-            {stats?.agentOnline ? "Agent online" : "Agent offline"}
-          </div>
-        </div>
-      </div>
     </aside>
   );
 }

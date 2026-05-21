@@ -14,7 +14,7 @@ Rules:
 - Adapt the steps to the customer's specific situation (don't just copy-paste).
 - If the customer mentioned specific repos, teams, or tools, reference them.
 - End with a clear next step or offer to hop on a call.
-- Keep it concise — 3-5 short paragraphs max.
+- Keep it concise - 3-5 short paragraphs max.
 - Do NOT use corporate jargon or "I apologize for the inconvenience."
 - Do NOT reveal that you're using a knowledge base or AI system.`,
 

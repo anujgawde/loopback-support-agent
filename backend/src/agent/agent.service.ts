@@ -100,6 +100,32 @@ export class AgentService {
         const responseParts: any[] = [];
         for (const call of llmResponse.functionCalls) {
           this.logger.log(`Tool call: ${call.name}`);
+
+          if (call.name === 'generate_bug_report') {
+            const priorKbSearch = toolResults.find((t) => t.tool === 'search_kb');
+            const kbMatches = Array.isArray(priorKbSearch?.result) ? priorKbSearch.result : [];
+            const hasKbMatch = kbMatches.some((m: any) => m.similarityScore >= 0.5);
+            if (hasKbMatch) {
+              this.logger.warn('Blocked generate_bug_report — KB match exists, redirecting LLM');
+              const topMatch = kbMatches[0];
+              toolResults.push({
+                tool: call.name,
+                args: call.args,
+                result: { blocked: true },
+                timestamp: new Date(),
+              });
+              responseParts.push({
+                functionResponse: {
+                  name: call.name,
+                  response: {
+                    error: `Do not generate a bug report. A KB article already matches this issue: "${topMatch.article.title}" (score: ${topMatch.similarityScore.toFixed(2)}). Use draft_response with kbArticleId "${topMatch.article.id}" instead.`,
+                  },
+                },
+              });
+              continue;
+            }
+          }
+
           const result = await this.executeTool(call.name, call.args);
 
           toolResults.push({
@@ -163,7 +189,7 @@ export class AgentService {
     let githubResult = toolResults.find((t) => t.tool === 'create_github_issue')?.result;
 
     if (bugReport && !bugFiled) {
-      this.logger.log('Bug report generated without GitHub issue — auto-filing');
+      this.logger.log('Bug report generated without GitHub issue - auto-filing');
       githubResult = await this.githubService.createIssue(
         bugReport.title || 'Bug Report',
         bugReport.markdownBody || bugReport.description || '',

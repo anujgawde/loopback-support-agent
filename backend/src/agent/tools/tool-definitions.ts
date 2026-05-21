@@ -9,7 +9,7 @@ export const AGENT_TOOLS = [
         query: {
           type: 'string',
           description:
-            "The search query — use the customer's symptoms or description of their problem",
+            "The search query - use the customer's symptoms or description of their problem",
         },
       },
       required: ['query'],
@@ -38,7 +38,7 @@ export const AGENT_TOOLS = [
   {
     name: 'generate_bug_report',
     description:
-      "Generate a structured bug report for the engineering team. Use this when the issue appears to be a software bug (errors, crashes, unexpected behavior) that isn't documented in the KB.",
+      "Generate a structured bug report for the engineering team. ONLY use this when: (1) search_kb returned NO matches, AND (2) the customer reports a clear software defect such as HTTP errors (500, 404), crashes, stack traces, or a feature that is completely non-functional. Do NOT use for stale data, sync delays, missing users, metric discrepancies, or configuration issues — those are operational issues handled by the KB.",
     parameters: {
       type: 'object',
       properties: {
@@ -94,7 +94,7 @@ export const AGENT_TOOLS = [
         category: { type: 'string' },
         symptoms: {
           type: 'string',
-          description: 'What the customer sees — in customer language',
+          description: 'What the customer sees - in customer language',
         },
         rootCause: { type: 'string', description: 'Technical root cause' },
         resolution: { type: 'string', description: 'Step-by-step fix' },

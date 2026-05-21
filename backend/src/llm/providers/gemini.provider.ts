@@ -65,7 +65,9 @@ export class GeminiProvider implements LLMProvider {
         },
       }),
     );
-    return JSON.parse(response.text || '{}') as T;
+    const raw = (response.text || '{}').trim();
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    return JSON.parse(jsonMatch ? jsonMatch[0] : '{}') as T;
   }
 
   async generateText(systemPrompt: string, userPrompt: string): Promise<string> {

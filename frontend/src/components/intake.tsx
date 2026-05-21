@@ -213,7 +213,7 @@ export function IntakePage() {
           label: "Searching knowledge base",
           result:
             agentResult.kbMatches && agentResult.kbMatches.length > 0
-              ? `Found ${agentResult.kbMatches.length} match(es) — top: ${Math.round(agentResult.kbMatches[0].score * 100)}%`
+              ? `Found ${agentResult.kbMatches.length} match(es) - top: ${Math.round(agentResult.kbMatches[0].score * 100)}%`
               : "No match found above threshold",
         },
         {
@@ -329,12 +329,6 @@ export function IntakePage() {
                   {text.length} chars ·{" "}
                   {text.split(/\s+/).filter(Boolean).length} words
                 </span>
-                <span className="w-px h-3 bg-line" />
-                <span className="flex items-center gap-1.5">
-                  <I.Database className="w-3 h-3" /> KB synced
-                </span>
-                <span className="w-px h-3 bg-line" />
-                <span>PII auto-redacted</span>
               </div>
               <div className="flex items-center gap-2">
                 {phase !== "idle" && (
